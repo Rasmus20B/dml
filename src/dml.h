@@ -28,8 +28,6 @@ namespace dml {
   };
 
   struct StackSlot {
-    // union types {int i; float f;} data;
-    //
     void print() {
       if(type == dml::Integer) {
         int val = std::get<int>(data);
@@ -69,7 +67,6 @@ namespace dml {
 
       void run() { 
         constexpr std::array magic = { 0x7f, 0x44, 0x4d, 0x4c };
-        std::cout << "LOADED SCRIPT SUCCESSFULLY\n";
         for(int i = 0; i < 4; ++i) {
           if(magic[i] != m_code[i]) {
             std::cerr << "unknown file type\n";
@@ -77,22 +74,36 @@ namespace dml {
           }
         }
         // Set pc to the entry point found in header file
-        pc = 4;
-
-        m_code.shrink_to_fit();
+        pc += (m_code[4]) & 0x000000FF;
+        pc += (m_code[5] << 8) & 0x0000FF00;
+        pc += (m_code[6] << 16) & 0x00FF0000;
+        pc += (m_code[7] << 24) & 0xFF000000;
+        m_code.erase(m_code.begin(), m_code.begin() + 8);
 
         while(pc < m_code.size()) {
           int op = m_code[pc];
           op = op << 8;
           pc++;
           op |= m_code[pc];
-          std::cout << op << "\n";
           auto opcode = static_cast<OpCode>(op);
           switch(opcode) {
-            case OpCode::PUSHI:
-              push(get_int_operand());
+            case OpCode::CALL:
+              call_stack.push_back(pc+5);
+              pc = get_int_operand();
+              break;
+            case OpCode::RETURN: {
+              if(call_stack.empty()) [[unlikely]] return;
+              size_t addr = call_stack.back();
+              call_stack.pop_back();
+              pc = addr;
+              break;
+            }
+            case OpCode::PUSHI: {
+              auto val = get_int_operand();
+              push(val);
               pc += 5;
               break;
+            }
             case OpCode::PUSHF: {
               auto res = get_float_operand();
               push(res);
@@ -159,6 +170,7 @@ namespace dml {
       std::vector<uint8_t> m_code;
       int pc = 0;
       std::vector<StackSlot> stack;
+      std::vector<size_t> call_stack;
       int sp = 0;
       std::shared_ptr<enm> gamestate;
       std::vector<StackSlot> registers;
