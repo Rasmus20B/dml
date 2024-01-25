@@ -1,8 +1,7 @@
-#pragma once
+module;
+export module opcodes;
 
-#include <cstdint>
-
-enum class OpCode {
+export enum class OpCode {
   NOP = 0,
   DELETE = 1,
   RETURN = 10,
@@ -105,5 +104,4 @@ enum class OpCode {
 
   // Print the contents of the stack
   PRINT = 999,
-
 };

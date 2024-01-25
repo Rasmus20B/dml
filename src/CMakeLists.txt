@@ -1,9 +1,11 @@
 
 
-set(SOURCE_FILES 
+add_library(${PROJECT_NAME})
+target_sources(${PROJECT_NAME}
+  PUBLIC
+  FILE_SET CXX_MODULES FILES
+  opcodes.cc
   dml.cc
-  dml.h
-  data_structures/sparse_set.h
-  data_structures/fill_array.h
+  data_structures/sparse_set.cc
+  data_structures/fill_array.cc
   )
-add_library(${PROJECT_NAME} ${SOURCE_FILES})

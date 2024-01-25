@@ -12,6 +12,8 @@ enable_testing()
 
 add_executable(adder_example examples/adder.cc)
 
+target_link_libraries(adder_example ${PROJECT_NAME})
+
 # target_link_libraries(sparse_set_test GTest::gtest_main)
 # target_link_libraries(static_gui_example GTest::gtest_main)
 

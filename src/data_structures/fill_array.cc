@@ -1,13 +1,11 @@
-
+module;
 #include <__expected/expected.h>
 #include <expected>
 #include <array>
 #include <stdexcept>
 
-namespace dml {
-namespace ds {
-
-template<typename T, int size>
+export module fill_array;
+export template<typename T, int size>
 struct fill_array {
   std::expected<T&, std::overflow_error> emplace(T val) {
     uint32_t i = 0;
@@ -36,6 +34,3 @@ struct fill_array {
     std::array<bool, size> mask;
     uint32_t n_elems = 1;
 };
-
-}
-}

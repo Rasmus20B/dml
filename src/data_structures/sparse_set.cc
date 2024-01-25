@@ -1,14 +1,15 @@
-#pragma once
+module;
 #include <__expected/expected.h>
 #include <cstddef>
 #include <vector>
 
-namespace dml {
-namespace ds {
+
+export module sparse_set;
+
 template<typename T>
 concept is_valid_ent_type = (std::is_same_v<T, std::uint32_t> || std::is_same_v<T, std::uint64_t>);
 
-template<typename Entity = std::uint32_t, typename Allocator = std::allocator<Entity>>
+export template<typename Entity = std::uint32_t, typename Allocator = std::allocator<Entity>>
 requires(is_valid_ent_type<Entity>)
 struct basic_sparse_set {
   using sparse_container_t = std::vector<Entity, Allocator>;
@@ -83,5 +84,3 @@ struct basic_sparse_set {
   dense_container_t dense;
   Entity head = 0;
 };
-}
-}
