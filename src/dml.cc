@@ -10,6 +10,7 @@ module;
 #include <array>
 
 export module dml;
+
 import opcodes;
 import sparse_set;
 
@@ -64,7 +65,78 @@ export class VM {
       return res;
     }
 
-    void run() { 
+    void fetch_execute() noexcept {
+      int op = m_code[pc];
+      op = op << 8;
+      pc++;
+      op |= m_code[pc];
+      auto opcode = static_cast<OpCode>(op);
+      // std::cout << std::hex << static_cast<int>(opcode) << "\n";
+      switch(opcode) {
+        case OpCode::CALL:
+          call_stack.push_back(pc+5);
+          pc = get_int_operand();
+          break;
+        case OpCode::RETURN: {
+          if(call_stack.empty()) [[unlikely]] return;
+          size_t addr = call_stack.back();
+          call_stack.pop_back();
+          pc = addr;
+          break;
+        }
+        case OpCode::PUSHI: {
+          auto val = get_int_operand();
+          std::cout << "Pushing int: " << val << " to the stack\n";
+          push(val);
+          pc += 5;
+          break;
+        }
+        case OpCode::PUSHF: {
+          auto val = get_float_operand();
+          std::cout << "Pushing float: " << val << " to the stack\n";
+          push(val);
+          pc += 5;
+          break;
+        }
+        case OpCode::SET: {
+          auto res = pop();
+          if(res.has_value()) {
+            registers.push_back(res.value());
+          } else {
+            std::cerr << "Error: " << res.error() << "\n";
+          }
+          pc += 5;
+        }
+        break;
+        case OpCode::ADDI: {
+          int total = 0;
+          while(sp > 0) {
+            auto e = pop().value();
+            if(e.type == Integer) {
+              total += std::get<int>(e.data);
+            } else if(e.type == Float) {
+              total += std::get<float>(e.data);
+            }
+          }
+          push(total);
+          pc++;
+        }
+        break;
+        case OpCode::PRINT:
+          std::cout << "Stack: "; 
+          for(int i = 0; i < sp; ++i) {
+            stack[i].print();
+          }
+          std::cout << "\n";
+          pc++;
+          break;
+        default:
+          std::cerr << "Error: Unknown Opcode: " << std::hex << op << "\n";
+          return;
+      }
+    }
+
+    void init_from_script() {
       constexpr std::array magic = { 0x7f, 0x44, 0x4d, 0x4c };
       for(int i = 0; i < 4; ++i) {
         if(magic[i] != m_code[i]) {
@@ -77,80 +149,17 @@ export class VM {
       pc += (m_code[5] << 8) & 0x0000FF00;
       pc += (m_code[6] << 16) & 0x00FF0000;
       pc += (m_code[7] << 24) & 0xFF000000;
-      m_code.erase(m_code.begin(), m_code.begin() + 8);
+    }
 
-
-      std::cout << m_code.size() << "\n";
-      std::cout << pc << "\n";
+    void run() { 
+      init_from_script();
       while(pc < m_code.size()) {
-        int op = m_code[pc];
-        op = op << 8;
-        pc++;
-        op |= m_code[pc];
-        auto opcode = static_cast<OpCode>(op);
-        switch(opcode) {
-          case OpCode::CALL:
-            call_stack.push_back(pc+5);
-            pc = get_int_operand();
-            break;
-          case OpCode::RETURN: {
-            if(call_stack.empty()) [[unlikely]] return;
-            size_t addr = call_stack.back();
-            call_stack.pop_back();
-            pc = addr;
-            break;
-          }
-          case OpCode::PUSHI: {
-            auto val = get_int_operand();
-            std::cout << "Pushing " << val << " to the stack\n";
-            push(val);
-            pc += 5;
-            break;
-          }
-          case OpCode::PUSHF: {
-            auto val = get_float_operand();
-            std::cout << "Pushing " << val << " to the stack\n";
-            push(val);
-            pc += 5;
-            break;
-          }
-          case OpCode::SET: {
-            auto res = pop();
-            if(res.has_value()) {
-              registers.push_back(res.value());
-            } else {
-              std::cerr << "Error: " << res.error() << "\n";
-            }
-            pc += 5;
-          }
-          break;
-          case OpCode::ADDI: {
-            int total = 0;
-            while(sp > 0) {
-              auto e = pop().value();
-              if(e.type == Integer) {
-                total += std::get<int>(e.data);
-              } else if(e.type == Float) {
-                total += std::get<float>(e.data);
-              }
-            }
-            push(total);
-            pc++;
-          }
-          break;
-          case OpCode::PRINT:
-            std::cout << "Stack: "; 
-            for(int i = 0; i < sp; ++i) {
-              stack[i].print();
-            }
-            std::cout << "\n";
-            pc++;
-            break;
-          default:
-            std::cerr << "Error: Unknown Opcode: " << std::hex << op << "\n";
-            return;
-        }
+        fetch_execute();
       }
+    }
+
+    void run_once() {
+      fetch_execute();
     }
 
     template<typename T>
@@ -172,7 +181,7 @@ export class VM {
   
   private:
     std::vector<uint8_t> m_code;
-    int pc = 0;
+    int pc{};
     std::vector<StackSlot> stack;
     std::vector<size_t> call_stack;
     int sp = 0;
